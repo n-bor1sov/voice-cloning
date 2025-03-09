@@ -8,7 +8,7 @@ import torch
 from torch.nn.utils import weight_norm
 matplotlib.use("Agg")
 import matplotlib.pylab as plt
-from meldataset import MAX_WAV_VALUE
+from voice_cloning.BigVGAN.meldataset import MAX_WAV_VALUE
 from scipy.io.wavfile import write
 
 

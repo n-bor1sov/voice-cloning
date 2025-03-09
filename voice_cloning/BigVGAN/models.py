@@ -11,9 +11,9 @@ import torch.nn as nn
 from torch.nn import Conv1d, ConvTranspose1d, Conv2d
 from torch.nn.utils import weight_norm, remove_weight_norm, spectral_norm
 
-import activations
-from utils import init_weights, get_padding
-from alias_free_torch import *
+import voice_cloning.BigVGAN.activations as activations
+from voice_cloning.BigVGAN.utils import init_weights, get_padding
+from voice_cloning.BigVGAN.alias_free_torch import *
 
 LRELU_SLOPE = 0.1
 
@@ -121,7 +121,7 @@ class AMPBlock2(torch.nn.Module):
             remove_weight_norm(l)
 
 
-class BigVGAN(torch.nn.Module):
+class  BigVGAN(torch.nn.Module):
     # this is our main BigVGAN model. Applies anti-aliased periodic activation for resblocks.
     def __init__(self, h):
         super(BigVGAN, self).__init__()

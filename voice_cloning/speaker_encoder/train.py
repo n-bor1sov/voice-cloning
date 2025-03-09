@@ -5,10 +5,22 @@ from torch.utils.data import Dataset, DataLoader
 from torch.optim import Adam
 from torch.utils.data.sampler import Sampler
 import numpy as np
+import torchaudio
+from tqdm import tqdm
 from collections import defaultdict
+# import pandas as pd
+import os
+import librosa
 
+import sys
+from pathlib import Path
+
+# Auto-find project root (works across platforms)
+if str(Path.cwd().parent) not in sys.path:
+    sys.path.append(str(Path.cwd().parent))
+    
 # Assume ECAPA_TDNN model code is imported or defined here
-from ecapa_tdnn import ECAPA_TDNN_SMALL
+from .ecapa_tdnn import ECAPA_TDNN_SMALL
 
 class GE2ELoss(nn.Module):
     def __init__(self, init_w=10.0, init_b=-5.0):
@@ -88,6 +100,13 @@ class VoxCeleb2Dataset(Dataset):
     def __len__(self):
         return len(self.audio_paths)
     
+    def load_audio(self, path: str):
+        wav_ref, sr = librosa.load(path)
+        wav_ref = torch.FloatTensor(wav_ref).unsqueeze(0)
+        resample_fn = torchaudio.transforms.Resample(sr, self.sr)
+        wav_ref = resample_fn(wav_ref)
+        return wav_ref
+    
     def __getitem__(self, idx):
         # Load audio and process to fixed length
         waveform = self.load_audio(self.audio_paths[idx])  # Implement this
@@ -112,35 +131,81 @@ def collate_fn(batch):
     return waveforms, speaker_ids
 
 # Training Configuration
-n_speakers = 64
-n_utterances = 10
-batch_size = n_speakers * n_utterances
-num_batches = 1000  # Adjust based on dataset size
-emb_dim = 192
+n_speakers = 4      # Reduced from 5 to handle CPU memory better
+n_utterances = 4    # Reduced from 5 to handle CPU memory better
+batch_size = n_speakers * n_utterances  # = 16 utterances per batch
+# Calculate a reasonable number of batches per epoch
+# With 4874 recordings, let's aim to see each recording roughly once per epoch
+num_batches = 4874 // batch_size  # ≈ 304 batches
+emb_dim = 256
 lr = 1e-4
 num_epochs = 20
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+folder_path = "./speaker_encoder/data/archive/vox1_test_wav/wav"
+
+def get_audio_paths_and_speaker_ids(vox1_test_wav_folder):
+    audio_paths = []
+    speaker_ids = []
+
+    # Add debug prints
+    print(f"Looking for .wav files in: {os.path.abspath(vox1_test_wav_folder)}")
+
+    # Traverse the directory structure
+    for root, dirs, files in os.walk(vox1_test_wav_folder):
+        for file in files:
+            if file.endswith(".wav"):
+                # Full path to the .wav file
+                audio_paths.append(os.path.join(root, file))
+                
+                # Extract speaker ID from the path
+                speaker_id = os.path.normpath(root).split(os.sep)[-2]
+                speaker_ids.append(speaker_id)
+
+    # Add debug prints
+    print(f"Found {len(audio_paths)} audio files")
+    print(f"Found {len(set(speaker_ids))} unique speakers")
+    
+    if len(audio_paths) == 0:
+        raise ValueError(f"No .wav files found in {vox1_test_wav_folder}")
+
+    return audio_paths, speaker_ids
+
+# Make folder path absolute if it's relative
+folder_path = os.path.abspath(folder_path)
+
+audio_paths, speaker_ids = get_audio_paths_and_speaker_ids(folder_path)
+
+# Add debug print before creating dataset
+print(f"Creating dataset with {len(audio_paths)} files and {len(set(speaker_ids))} speakers")
 
 train_dataset = VoxCeleb2Dataset(audio_paths, speaker_ids)
+
+# Add debug print for batch sampler
+print(f"Number of speakers in dataset: {len(train_dataset.spk_to_id)}")
+
 batch_sampler = GE2EBatchSampler(
-    train_dataset, n_speakers, n_utterances, num_batches
+    train_dataset, 
+    n_speakers=min(n_speakers, len(train_dataset.spk_to_id)),  # Ensure n_speakers isn't larger than available speakers
+    n_utterances=n_utterances, 
+    num_batches=num_batches
 )
 train_loader = DataLoader(
     train_dataset, batch_sampler=batch_sampler, collate_fn=collate_fn
 )
 
 # Model and Loss
-model = ECAPA_TDNN_SMALL(feat_dim=80, emb_dim=emb_dim).to(device)
+model = ECAPA_TDNN_SMALL(feat_dim=256, emb_dim=emb_dim).to(device)
 criterion = GE2ELoss().to(device)
 optimizer = Adam(model.parameters(), lr=lr)
+
 
 # Training Loop
 for epoch in range(num_epochs):
     model.train()
     total_loss = 0.0
     
-    for batch_idx, (waveforms, _) in enumerate(train_loader):
+    for batch_idx, (waveforms, _) in tqdm(enumerate(train_loader), total=num_batches):
         waveforms = waveforms.to(device)
         
         embeddings = model(waveforms)

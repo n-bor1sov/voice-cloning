@@ -1,1 +1,43 @@
 *.wav
+# Byte-compiled files
+__pycache__/
+*.py[cod]
+voice_clonning
+.p
+v_cloning
+.DS_Store
+# Distribution / packaging
+.Python
+env/
+vс/
+ENV/
+env.bak/
+venv.bak/
+dist/
+build/
+*.egg-info/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Pytest
+.cache
+
+# Logs
+*.log
+
+# Data files
+data/
+*.csv
+*.tsv
+*.json
+
+# Model files
+*.h5
+*.pt
+*.pth
+
+# Temporary files
+*.tmp
+*.temp
+# End Generation Here

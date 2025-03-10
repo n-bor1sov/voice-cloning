@@ -9,6 +9,18 @@ This project aims to develop a voice cloning system that can synthesize speech i
    python -m voice_cloning.speaker_encoder.train
    ```
 2. **Text Encoder Training**
+
+    Before you need to download [libri-tts](https://www.openslr.org/60) dataset and place into text_encoder_dataset directory.
+
+   voice-cloning
+
+   ├── notebooks
+
+   ├── text_encoder_dataset <--Here
+
+   └── voice_cloning
+    Also download and place checkpoints of decoder model from [here](https://huggingface.co/WhiteF4lcon/DecoderGradTTS/tree/main) into voice_cloning/Grad-TTS/checkpts directory.
+    Then run
     ```
    python -m voice_cloning.Grad-TTS.train_text_encoder
    ```

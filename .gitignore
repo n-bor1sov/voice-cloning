@@ -32,6 +32,11 @@ data/
 *.tsv
 *.json
 
+text_encoder_dataset
+logs
+voice_cloning/Grad-TTS/checkpts/trained_decoder.pt
+voice_cloning/Grad-TTS/checkpts/hifigan.pt
+
 # Model files
 *.h5
 *.pt

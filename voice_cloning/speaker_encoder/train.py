@@ -8,12 +8,13 @@ import numpy as np
 import torchaudio
 from tqdm import tqdm
 from collections import defaultdict
-# import pandas as pd
+import pandas as pd
 import os
 import librosa
 
 import sys
 from pathlib import Path
+
 
 # Auto-find project root (works across platforms)
 if str(Path.cwd().parent) not in sys.path:
@@ -139,10 +140,17 @@ batch_size = n_speakers * n_utterances  # = 16 utterances per batch
 num_batches = 4874 // batch_size  # ≈ 304 batches
 emb_dim = 256
 lr = 1e-4
-num_epochs = 20
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+num_epochs = 1
 
-folder_path = "./speaker_encoder/data/archive/vox1_test_wav/wav"
+# if torch.backends.mps.is_available():
+#     device = torch.device("mps")
+# el
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+else:
+    device = torch.device("cpu")
+
+folder_path = "./voice_cloning/speaker_encoder/data/archive/vox1_test_wav/wav"
 
 def get_audio_paths_and_speaker_ids(vox1_test_wav_folder):
     audio_paths = []
@@ -170,6 +178,45 @@ def get_audio_paths_and_speaker_ids(vox1_test_wav_folder):
         raise ValueError(f"No .wav files found in {vox1_test_wav_folder}")
 
     return audio_paths, speaker_ids
+
+def evaluate(model, test_csv_path, device):
+    model.eval()
+    test_df = pd.read_csv(test_csv_path)
+    
+    correct = 0
+    total = 0
+    
+    with torch.no_grad():
+        for _, row in tqdm(test_df.iterrows(), total=len(test_df), desc="Evaluating"):
+            # Load both audio files
+            audio1_path = os.path.join(folder_path, row['audio_1'])
+            audio2_path = os.path.join(folder_path, row['audio_2'])
+            
+            # Create dataset instances for single files
+            dataset = VoxCeleb2Dataset([audio1_path, audio2_path], ['spk1', 'spk2'])
+            
+            # Get embeddings
+            audio1, _ = dataset[0]
+            audio2, _ = dataset[1]
+            
+            audio1 = audio1.unsqueeze(0).to(device)
+            audio2 = audio2.unsqueeze(0).to(device)
+            
+            emb1 = model(audio1)
+            emb2 = model(audio2)
+            
+            # Calculate similarity
+            similarity = F.cosine_similarity(emb1, emb2)
+            
+            # Predict (similarity > 0.5 indicates same speaker)
+            prediction = (similarity > 0.5).int().item()
+            
+            # Compare with ground truth
+            correct += (prediction == row['label'])
+            total += 1
+    
+    accuracy = correct / total
+    return accuracy
 
 # Make folder path absolute if it's relative
 folder_path = os.path.abspath(folder_path)
@@ -199,8 +246,10 @@ model = ECAPA_TDNN_SMALL(feat_dim=256, emb_dim=emb_dim).to(device)
 criterion = GE2ELoss().to(device)
 optimizer = Adam(model.parameters(), lr=lr)
 
+test_csv_path = "./voice_cloning/speaker_encoder/data/archive/test.csv"
 
 # Training Loop
+best_accuracy = 0.0
 for epoch in range(num_epochs):
     model.train()
     total_loss = 0.0
@@ -224,3 +273,31 @@ for epoch in range(num_epochs):
     
     avg_loss = total_loss / len(train_loader)
     print(f"Epoch [{epoch+1}/{num_epochs}], Average Loss: {avg_loss:.4f}")
+    
+    # Evaluate after each epoch
+    accuracy = evaluate(model, test_csv_path, device)
+    print(f"Epoch [{epoch+1}/{num_epochs}], Evaluation Accuracy: {accuracy:.4f}")
+    
+    # Save checkpoint after each epoch
+    checkpoint_dir = "checkpoints"
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    
+    checkpoint = {
+        'epoch': epoch + 1,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': avg_loss,
+        'accuracy': accuracy
+    }
+    
+    # Save best model
+    if accuracy > best_accuracy:
+        best_accuracy = accuracy
+        checkpoint_path = os.path.join(checkpoint_dir, 'best_model.pt')
+        torch.save(checkpoint, checkpoint_path)
+        print(f"New best model saved with accuracy: {accuracy:.4f}")
+    
+    # Save latest checkpoint
+    checkpoint_path = os.path.join(checkpoint_dir, f'checkpoint.pt')
+    torch.save(checkpoint, checkpoint_path)
+    print(f"Checkpoint saved to {checkpoint_path}")

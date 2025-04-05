@@ -139,8 +139,8 @@ batch_size = n_speakers * n_utterances  # = 16 utterances per batch
 # With 4874 recordings, let's aim to see each recording roughly once per epoch
 num_batches = 4874 // batch_size  # ≈ 304 batches
 emb_dim = 256
-lr = 1e-4
-num_epochs = 1
+lr = 1e-5
+num_epochs = 30
 
 # if torch.backends.mps.is_available():
 #     device = torch.device("mps")
@@ -181,7 +181,7 @@ def get_audio_paths_and_speaker_ids(vox1_test_wav_folder):
 
 def evaluate(model, test_csv_path, device):
     model.eval()
-    test_df = pd.read_csv(test_csv_path)
+    test_df = pd.read_csv(test_csv_path).sample(n=500, random_state=42)
     
     correct = 0
     total = 0

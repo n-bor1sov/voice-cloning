@@ -6,6 +6,7 @@ voice_clonning
 .p
 v_cloning
 .DS_Store
+*.so
 # Distribution / packaging
 .Python
 env/

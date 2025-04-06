@@ -5,8 +5,8 @@ from distutils.extension import Extension
 
 extensions = [
     Extension(
-        name="model.monotonic_align.core",
-        sources=["model/monotonic_align/core.pyx"],
+        name="core",
+        sources=["core.pyx"],
         include_dirs=[numpy.get_include()]
     )
 ]

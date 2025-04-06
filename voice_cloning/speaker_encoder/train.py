@@ -11,9 +11,11 @@ from collections import defaultdict
 import pandas as pd
 import os
 import librosa
+from .utils import load_model
 
 import sys
 from pathlib import Path
+import argparse
 
 
 # Auto-find project root (works across platforms)
@@ -140,7 +142,7 @@ batch_size = n_speakers * n_utterances  # = 16 utterances per batch
 num_batches = 4874 // batch_size  # ≈ 304 batches
 emb_dim = 256
 lr = 1e-5
-num_epochs = 30
+num_epochs = 60
 
 # if torch.backends.mps.is_available():
 #     device = torch.device("mps")
@@ -149,6 +151,8 @@ if torch.cuda.is_available():
     device = torch.device("cuda")
 else:
     device = torch.device("cpu")
+
+print(f"Using device: {device}")
 
 folder_path = "./voice_cloning/speaker_encoder/data/archive/vox1_test_wav/wav"
 
@@ -248,9 +252,27 @@ optimizer = Adam(model.parameters(), lr=lr)
 
 test_csv_path = "./voice_cloning/speaker_encoder/data/archive/test.csv"
 
-# Training Loop
+resume_checkpoint = "checkpoints/best_model.pt"
+
+
+# --- Checkpoint Loading ---
+start_epoch = 0
 best_accuracy = 0.0
-for epoch in range(num_epochs):
+if resume_checkpoint and os.path.isfile(resume_checkpoint):
+    print(f"Resuming training from checkpoint: {resume_checkpoint}")
+    checkpoint = torch.load(resume_checkpoint, map_location=device)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    start_epoch = checkpoint['epoch']
+    best_accuracy = checkpoint.get('accuracy', 0.0) # Use get for backward compatibility
+    print(f"Loaded checkpoint from epoch {start_epoch} with best accuracy {best_accuracy:.4f}")
+else:
+    print("Starting training from scratch.")
+# --- End Checkpoint Loading ---
+
+# Training Loop
+print(f"Starting training loop from epoch {start_epoch + 1}")
+for epoch in range(start_epoch, num_epochs):
     model.train()
     total_loss = 0.0
     
@@ -278,8 +300,8 @@ for epoch in range(num_epochs):
     accuracy = evaluate(model, test_csv_path, device)
     print(f"Epoch [{epoch+1}/{num_epochs}], Evaluation Accuracy: {accuracy:.4f}")
     
+    checkpoint_dir = "checkpoints_continued"
     # Save checkpoint after each epoch
-    checkpoint_dir = "checkpoints"
     os.makedirs(checkpoint_dir, exist_ok=True)
     
     checkpoint = {

@@ -177,51 +177,50 @@ class TextMelSpeakerBatchCollate(object):
         x_lengths = torch.LongTensor(x_lengths)
         return {'x': x, 'x_lengths': x_lengths, 'y': y, 'y_lengths': y_lengths, 'spk': spk}
 
-
 class UnitMelSpeakerDataset(TextMelSpeakerDataset):
-    def __init__(self, filelist_path, spk_embeds_path, hubert_embeds, cmudict_path, add_blank=True,
+    def __init__(self, filelist_path, cmudict_path, add_blank=True,
                  n_fft=1024, n_mels=80, sample_rate=22050,
                  hop_length=256, win_length=1024, f_min=0., f_max=8000):
-        super().__init__(filelist_path, spk_embeds_path, cmudict_path, add_blank,
+        super().__init__(filelist_path, cmudict_path, add_blank,
                  n_fft, n_mels, sample_rate,
                  hop_length, win_length, f_min, f_max)
-        self.hubert_embeds = hubert_embeds
-
         
     def get_triplet(self, line):
         filepath, _, speaker = line[0], line[1], line[2]
-        unit, duration = self.hubert_embeds[filepath.replace('../../', './')]
+        unit = self.get_unit(filepath)
         mel = self.get_mel(filepath)
-        speaker = self.spk_embeds[filepath.replace('../../', './')]
-        return (unit, duration, mel, speaker)
+        speaker = self.get_speaker(speaker)
+        return (unit, mel, speaker)
     
-    def __getitem__(self, index):
-        unit, duration, mel, speaker = self.get_triplet(self.filelist[index])
-        item = {'y': mel, 'unit': unit, 'duration': duration, 'spk': speaker}
-        return item
+    def get_unit(self, filepath):
+        wav, sr = ta.load(filepath)
+        resample_fn = ta.transforms.Resample(sr, 16000)
+
+        wav = resample_fn(wav)[0]
+        return wav
 
 class UnitMelSpeakerBatchCollate(object):
     def __call__(self, batch):
         B = len(batch)
         y_max_length = max([item['y'].shape[-1] for item in batch])
         y_max_length = fix_len_compatibility(y_max_length)
-        unit_max_length = max([item['unit'].shape[-1] for item in batch])
+        x_max_length = max([item['x'].shape[-1] for item in batch])
         n_feats = batch[0]['y'].shape[-2]
 
         y = torch.zeros((B, n_feats, y_max_length), dtype=torch.float32)
-        unit = torch.zeros((B, unit_max_length), dtype=torch.long)
-        duration = torch.zeros((B, unit_max_length), dtype=torch.long)
-        y_lengths, unit_lengths = [], []
-        spk = torch.zeros((B, batch[0]['spk'].shape[-1]), dtype=torch.float32)
+        x = torch.zeros((B, x_max_length), dtype=torch.float32)
+        y_lengths, x_lengths = [], []
+        spk = []
 
         for i, item in enumerate(batch):
-            y_, unit_, duration_, spk_ = item['y'], item['unit'], item['duration'], item['spk']
+            y_, x_, spk_ = item['y'], item['x'], item['spk']
             y_lengths.append(y_.shape[-1])
-            unit_lengths.append(unit.shape[-1])
+            x_lengths.append(int(np.floor((x_.shape[-1] - 400) / 320) + 1))
             y[i, :, :y_.shape[-1]] = y_
-            unit[i, :unit_.shape[-1]] = unit_
-            duration[i, :duration_.shape[-1]] = duration_
-            spk[i] =  spk_
+            x[i, :x_.shape[-1]] = x_
+            spk.append(spk_)
+
         y_lengths = torch.LongTensor(y_lengths)
-        unit_lengths = torch.LongTensor(unit_lengths)
-        return {'unit': unit, 'unit_lengths': unit_lengths, 'duration': duration, 'y': y, 'y_lengths': y_lengths, 'spk': spk}
+        x_lengths = torch.LongTensor(x_lengths)
+        spk = torch.cat(spk, dim=0)
+        return {'x': x, 'x_lengths': x_lengths, 'y': y, 'y_lengths': y_lengths, 'spk': spk}

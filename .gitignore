@@ -2,9 +2,8 @@
 # Byte-compiled files
 __pycache__/
 *.py[cod]
-voice_clonning
+
 .p
-v_cloning
 .DS_Store
 # Distribution / packaging
 .Python
@@ -27,7 +26,9 @@ build/
 *.log
 
 # Data files
-data/
+voice_cloning/speaker_encoder/data/train
+voice_cloning/speaker_encoder/data/test
+
 *.csv
 *.tsv
 *.json

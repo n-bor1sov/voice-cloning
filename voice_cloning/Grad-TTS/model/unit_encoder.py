@@ -47,7 +47,7 @@ class UnitEncoder(BaseModule):
         x = self.contentvec_extractor(x)["last_hidden_state"]
         x = self.emb(x) * math.sqrt(self.n_channels)
         x = torch.transpose(x, 1, -1)
-        x_mask = sequence_mask(x_lengths, x.size(2)).to(x.dtype)
+        x_mask = torch.unsqueeze(sequence_mask(x_lengths, x.size(2)), 1).to(x.dtype)
 
         x = self.prenet(x, x_mask)
         if self.n_spks > 1:

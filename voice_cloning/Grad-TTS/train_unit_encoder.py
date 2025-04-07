@@ -17,7 +17,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 import params
-from model.unit_tts import UnitGradTTS
+from model.tts import GradTTS
 from model.unit_encoder import UnitEncoder
 from data import UnitMelSpeakerDataset, UnitMelSpeakerBatchCollate
 from utils import plot_tensor, save_plot
@@ -82,7 +82,7 @@ if __name__ == "__main__":
                                          win_length, f_min, f_max)
 
     print('Initializing model...')
-    model = UnitGradTTS(nsymbols, n_spks, spk_emb_dim, n_enc_channels,
+    model = GradTTS(nsymbols, n_spks, spk_emb_dim, n_enc_channels,
                     filter_channels, filter_channels_dp,
                     n_heads, n_enc_layers, enc_kernel, enc_dropout, window_size,
                     n_feats, dec_dim, beta_min, beta_max, pe_scale).cuda()

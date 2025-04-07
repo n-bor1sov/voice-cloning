@@ -38,6 +38,7 @@ text_encoder_dataset
 logs
 voice_cloning/Grad-TTS/checkpts/trained_decoder.pt
 voice_cloning/Grad-TTS/checkpts/hifigan.pt
+voice_cloning/Grad-TTS/LibriTTS
 venv
 
 # Model files

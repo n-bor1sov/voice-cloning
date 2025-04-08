@@ -40,7 +40,7 @@ class GradTTS(BaseModule):
         self.decoder = Diffusion(n_feats, dec_dim, n_spks, spk_emb_dim, beta_min, beta_max, pe_scale)
 
     @torch.no_grad()
-    def forward(self, x, x_lengths, spk, n_timesteps, temperature=1.0, stoc=False, length_scale=1.0):
+    def forward(self, x, x_lengths, n_timesteps, temperature=1.0, stoc=False, spk=None, length_scale=1.0):
         """
         Generates mel-spectrogram from text. Returns:
             1. encoder outputs
@@ -58,7 +58,11 @@ class GradTTS(BaseModule):
                 Increase value to slow down generated speech and vice versa.
         """
         x, x_lengths = self.relocate_input([x, x_lengths])
-        
+
+        if self.n_spks > 1:
+            # Get speaker embedding
+            spk = self.spk_emb(spk)
+
         # Get encoder_outputs `mu_x` and log-scaled token durations `logw`
         mu_x, logw, x_mask = self.encoder(x, x_lengths, spk)
 
@@ -103,6 +107,10 @@ class GradTTS(BaseModule):
         """
         x, x_lengths, y, y_lengths = self.relocate_input([x, x_lengths, y, y_lengths])
 
+        if self.n_spks > 1:
+            # Get speaker embedding
+            spk = self.spk_emb(spk)
+        
         # Get encoder_outputs `mu_x` and log-scaled token durations `logw`
         mu_x, logw, x_mask = self.encoder(x, x_lengths, spk)
         y_max_length = y.shape[-1]
@@ -145,7 +153,7 @@ class GradTTS(BaseModule):
                 y_cut[i, :, :y_cut_length] = y_[:, cut_lower:cut_upper]
                 attn_cut[i, :, :y_cut_length] = attn[i, :, cut_lower:cut_upper]
             y_cut_lengths = torch.LongTensor(y_cut_lengths)
-            y_cut_mask = sequence_mask(y_cut_lengths, out_size).unsqueeze(1).to(y_mask)
+            y_cut_mask = sequence_mask(y_cut_lengths).unsqueeze(1).to(y_mask)
             
             attn = attn_cut
             y = y_cut

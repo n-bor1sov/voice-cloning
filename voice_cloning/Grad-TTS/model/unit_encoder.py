@@ -1,13 +1,5 @@
-from transformers import HubertModel
-
 from model.text_encoder import *
 
-
-class HubertModelWithFinalProj(HubertModel):
-    def __init__(self, config):
-        super().__init__(config)
-
-        self.final_proj = torch.nn.Linear(config.hidden_size, config.classifier_proj_size)
 
 class UnitEncoder(BaseModule):
     def __init__(self, n_vocab, n_feats, n_channels, filter_channels, 
@@ -39,12 +31,8 @@ class UnitEncoder(BaseModule):
         self.proj_m = torch.nn.Conv1d(n_channels + (spk_emb_dim if n_spks > 1 else 0), n_feats, 1)
         self.proj_w = DurationPredictor(n_channels + (spk_emb_dim if n_spks > 1 else 0), filter_channels_dp, 
                                         kernel_size, p_dropout)
-        
-        self.contentvec_extractor = HubertModelWithFinalProj.from_pretrained("lengyue233/content-vec-best")
-        _ = self.contentvec_extractor.eval()
 
     def forward(self, x, x_lengths, spk=None):
-        x = self.contentvec_extractor(x)["last_hidden_state"]
         x = self.emb(x) * math.sqrt(self.n_channels)
         x = torch.transpose(x, 1, -1)
         x_mask = torch.unsqueeze(sequence_mask(x_lengths, x.size(2)), 1).to(x.dtype)

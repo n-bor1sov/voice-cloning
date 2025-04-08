@@ -2,9 +2,9 @@ import os
 import sys
 if 'voice-cloning' in os.getcwd().split('\\')[-1]:
     try:
-        sys.path.append(os.getcwd()+'\\voice_cloning\\Grad-TTS')
-        sys.path.append(os.getcwd()+'\\voice_cloning\\Grad-TTS\\hifi-gan')
-        os.chdir(os.getcwd()+'\\voice_cloning\\Grad-TTS')
+        sys.path.append(os.getcwd()+'/voice_cloning/Grad-TTS')
+        sys.path.append(os.getcwd()+'/voice_cloning/Grad-TTS/hifi-gan')
+        os.chdir(os.getcwd()+'/voice_cloning/Grad-TTS')
     except:
         print('Problem with directory')
     print(os.getcwd())
@@ -23,6 +23,7 @@ from text.symbols import symbols
 
 train_filelist_path = params.train_filelist_path
 valid_filelist_path = params.valid_filelist_path
+spk_embeds_path = params.spk_embeds_path
 cmudict_path = params.cmudict_path
 add_blank = params.add_blank
 n_spks = params.n_spks
@@ -67,14 +68,14 @@ if __name__ == "__main__":
     logger = SummaryWriter(log_dir=log_dir)
 
     print('Initializing data loaders...')
-    train_dataset = TextMelSpeakerDataset(train_filelist_path, cmudict_path, add_blank,
+    train_dataset = TextMelSpeakerDataset(train_filelist_path, spk_embeds_path, cmudict_path, add_blank,
                                           n_fft, n_feats, sample_rate, hop_length,
                                           win_length, f_min, f_max)
     batch_collate = TextMelSpeakerBatchCollate()
     loader = DataLoader(dataset=train_dataset, batch_size=batch_size,
                         collate_fn=batch_collate, drop_last=True,
                         num_workers=8, shuffle=True)
-    test_dataset = TextMelSpeakerDataset(valid_filelist_path, cmudict_path, add_blank,
+    test_dataset = TextMelSpeakerDataset(valid_filelist_path, spk_embeds_path, cmudict_path, add_blank,
                                          n_fft, n_feats, sample_rate, hop_length,
                                          win_length, f_min, f_max)
 
@@ -84,8 +85,8 @@ if __name__ == "__main__":
                     n_heads, n_enc_layers, enc_kernel, enc_dropout, window_size,
                     n_feats, dec_dim, beta_min, beta_max, pe_scale).cuda()
     model.load_state_dict(torch.load(params.chkpt, map_location=lambda loc, storage: loc))
-    for param in model.decoder.parameters():
-        param.requires_grad = False
+    # for param in model.decoder.parameters():
+    #     param.requires_grad = False
     print('Number of encoder parameters = %.2fm' % (model.encoder.nparams/1e6))
     print('Number of decoder parameters = %.2fm' % (model.decoder.nparams/1e6))
 
@@ -94,12 +95,13 @@ if __name__ == "__main__":
 
     print('Logging test batch...')
     test_batch = test_dataset.sample_test_batch(size=params.test_size)
+    i = 0
     for item in test_batch:
         mel, spk = item['y'], item['spk']
-        i = int(spk.cpu())
         logger.add_image(f'image_{i}/ground_truth', plot_tensor(mel.squeeze()),
-                         global_step=0, dataformats='HWC')
+                        global_step=0, dataformats='HWC')
         save_plot(mel.squeeze(), f'{log_dir}/original_{i}.png')
+        i += 1
 
     print('Start training...')
     iteration = 0
@@ -107,11 +109,11 @@ if __name__ == "__main__":
         model.eval()
         print('Synthesis...')
         with torch.no_grad():
+            i = 0
             for item in test_batch:
                 x = item['x'].to(torch.long).unsqueeze(0).cuda()
                 x_lengths = torch.LongTensor([x.shape[-1]]).cuda()
-                spk = item['spk'].to(torch.long).cuda()
-                i = int(spk.cpu())
+                spk = item['spk'].cuda()
 
                 y_enc, y_dec, attn = model(x, x_lengths, n_timesteps=50, spk=spk)
                 logger.add_image(f'image_{i}/generated_enc',
@@ -129,6 +131,7 @@ if __name__ == "__main__":
                           f'{log_dir}/generated_dec_{i}.png')
                 save_plot(attn.squeeze().cpu(),
                           f'{log_dir}/alignment_{i}.png')
+                i += 1
 
         model.train()
         dur_losses = []
@@ -181,4 +184,4 @@ if __name__ == "__main__":
             continue
 
         ckpt = model.state_dict()
-        torch.save(ckpt, f=f"{log_dir}/grad_{epoch}.pt")
+        torch.save(ckpt, f=f"{log_dir}/gradtts_{epoch}.pt")

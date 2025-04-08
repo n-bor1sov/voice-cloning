@@ -13,7 +13,13 @@ import torch.nn.functional as F
 if str(Path.cwd().parent) not in sys.path:
     sys.path.append(str(Path.cwd().parent))
 
-from .ecapa_tdnn import ECAPA_TDNN_SMALL_WTTH_PROJ
+from transformers import HubertModel
+
+class HubertModelWithFinalProj(HubertModel):
+    def __init__(self, config):
+        super().__init__(config)
+
+        self.final_proj = torch.nn.Linear(config.hidden_size, config.classifier_proj_size)
 
 def main():
     # Set device
@@ -27,9 +33,8 @@ def main():
 
     print("Loading pre-trained ECAPA model...")
     checkpoint = torch.load(checkpoint_path, map_location=device)
-    model = ECAPA_TDNN_SMALL_WTTH_PROJ(feat_dim=256).to(device)
-    model.load_state_dict(checkpoint)
-    model.eval()
+    model = HubertModelWithFinalProj.from_pretrained("lengyue233/content-vec-best")
+    _ = model.cuda().eval()
     print("Model loaded successfully")
 
     # Get all audio files
@@ -47,7 +52,7 @@ def main():
             waveform = waveform.unsqueeze(0).to(device)  # Add batch dimension
             
             # Get embedding
-            embedding = model(waveform)
+            embedding = model(waveform)["last_hidden_state"]
             embedding = embedding.squeeze(0).cpu()  # Remove batch dimension and move to CPU
             
             # Store in dictionary with file path as key
@@ -55,7 +60,7 @@ def main():
             embeddings_dict[file_path] = embedding
 
     # Save embeddings
-    output_path = "checkpoints/precomputed_embeddings_libritts.pt"
+    output_path = "checkpoints/precomputed_hubert_embeddings_libritts.pt"
     torch.save(embeddings_dict, output_path)
     print(f"Saved {len(embeddings_dict)} embeddings to {output_path}")
 

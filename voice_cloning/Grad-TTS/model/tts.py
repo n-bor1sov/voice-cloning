@@ -58,11 +58,7 @@ class GradTTS(BaseModule):
                 Increase value to slow down generated speech and vice versa.
         """
         x, x_lengths = self.relocate_input([x, x_lengths])
-
-        if self.n_spks > 1 or spk is not None:
-            # Get speaker embedding
-            spk = self.spk_emb(spk.repeat(2,1))[0:1, :]
-
+        
         # Get encoder_outputs `mu_x` and log-scaled token durations `logw`
         mu_x, logw, x_mask = self.encoder(x, x_lengths, spk)
 
@@ -107,10 +103,6 @@ class GradTTS(BaseModule):
         """
         x, x_lengths, y, y_lengths = self.relocate_input([x, x_lengths, y, y_lengths])
 
-        if self.n_spks > 1 or spk is not None:
-            # Get speaker embedding
-            spk = self.spk_emb(spk.repeat(2,1))[0:1, :]
-        
         # Get encoder_outputs `mu_x` and log-scaled token durations `logw`
         mu_x, logw, x_mask = self.encoder(x, x_lengths, spk)
         y_max_length = y.shape[-1]

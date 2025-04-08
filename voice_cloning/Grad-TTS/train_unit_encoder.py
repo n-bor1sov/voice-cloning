@@ -26,6 +26,8 @@ from text.symbols import symbols
 
 train_filelist_path = params.train_filelist_path
 valid_filelist_path = params.valid_filelist_path
+spk_embeds_path = params.spk_embeds_path
+hubert_embeds_path = params.hubert_embeds_path
 cmudict_path = params.cmudict_path
 add_blank = params.add_blank
 n_spks = params.n_spks
@@ -70,14 +72,15 @@ if __name__ == "__main__":
     logger = SummaryWriter(log_dir=log_dir)
 
     print('Initializing data loaders...')
-    train_dataset = UnitMelSpeakerDataset(train_filelist_path, cmudict_path, add_blank,
+    hubert_embeds = torch.load(hubert_embeds_path)
+    train_dataset = UnitMelSpeakerDataset(train_filelist_path, spk_embeds_path, hubert_embeds, cmudict_path, add_blank,
                                           n_fft, n_feats, sample_rate, hop_length,
                                           win_length, f_min, f_max)
     batch_collate = UnitMelSpeakerBatchCollate()
     loader = DataLoader(dataset=train_dataset, batch_size=batch_size,
                         collate_fn=batch_collate, drop_last=True,
-                        num_workers=1, shuffle=True)
-    test_dataset = UnitMelSpeakerDataset(valid_filelist_path, cmudict_path, add_blank,
+                        num_workers=8, shuffle=True)
+    test_dataset = UnitMelSpeakerDataset(valid_filelist_path, spk_embeds_path, hubert_embeds, cmudict_path, add_blank,
                                          n_fft, n_feats, sample_rate, hop_length,
                                          win_length, f_min, f_max)
 
@@ -104,24 +107,25 @@ if __name__ == "__main__":
 
     print('Logging test batch...')
     test_batch = test_dataset.sample_test_batch(size=params.test_size)
+    i = 0
     for item in test_batch:
         mel, spk = item['y'], item['spk']
-        i = int(spk.cpu())
         logger.add_image(f'image_{i}/ground_truth', plot_tensor(mel.squeeze()),
                          global_step=0, dataformats='HWC')
         save_plot(mel.squeeze(), f'{log_dir}/original_{i}.png')
-
+        i += 1
+        
     print('Start training...')
     iteration = 0
     for epoch in range(1, n_epochs + 1):
         model.eval()
         print('Synthesis...')
         with torch.no_grad():
+            i = 0
             for item in test_batch:
                 x = item['x'].unsqueeze(0).cuda()
                 x_lengths = torch.LongTensor([np.floor((x.shape[-1] - 400) / 320) + 1]).cuda()
-                spk = item['spk'].to(torch.long).cuda()
-                i = int(spk.cpu())
+                spk = item['spk'].cuda()
 
                 y_enc, y_dec, attn = model(x, x_lengths, n_timesteps=50, spk=spk)
                 logger.add_image(f'image_{i}/generated_enc',
@@ -139,6 +143,7 @@ if __name__ == "__main__":
                           f'{log_dir}/generated_dec_{i}_unit.png')
                 save_plot(attn.squeeze().cpu(),
                           f'{log_dir}/alignment_{i}_unit.png')
+                i += 1
 
         model.train()
         dur_losses = []

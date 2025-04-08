@@ -6,7 +6,7 @@ train_filelist_path = 'resources/filelists/libri-tts/train.txt'
 valid_filelist_path = 'resources/filelists/libri-tts/valid.txt'
 test_filelist_path = 'resources/filelists/libri-tts/test.txt'
 spk_embeds_path = '../../checkpoints/precomputed_embeddings_libritts.pt'
-hubert_embeds_path = '../../checkpoints/precomputed_textless_embeddings_libritts.pt'
+hubert_embeds_path = '../../checkpoints/precomputed_hubert_embeddings_libritts.pt'
 cmudict_path = 'resources/cmu_dictionary'
 add_blank = True
 n_feats = 80
@@ -38,7 +38,7 @@ beta_max = 20.0
 pe_scale = 1000  # 1 for `grad-tts-old.pt` checkpoint
 
 # training parameters
-log_dir = 'logs/unit_encoder'
+log_dir = 'logs/text_encoder'
 test_size = 4
 n_epochs = 10000
 batch_size = 4

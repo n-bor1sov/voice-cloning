@@ -31,12 +31,8 @@ class UnitEncoder(BaseModule):
         self.proj_m = torch.nn.Conv1d(n_channels + (spk_emb_dim if n_spks > 1 else 0), n_feats, 1)
         self.proj_w = DurationPredictor(n_channels + (spk_emb_dim if n_spks > 1 else 0), filter_channels_dp, 
                                         kernel_size, p_dropout)
-        
-        self.contentvec_extractor = HubertModelWithFinalProj.from_pretrained("lengyue233/content-vec-best")
-        _ = self.contentvec_extractor.eval()
 
     def forward(self, x, x_lengths, spk=None):
-        x = self.contentvec_extractor(x)["last_hidden_state"]
         x = self.emb(x) * math.sqrt(self.n_channels)
         x = torch.transpose(x, 1, -1)
         x_mask = sequence_mask(x_lengths, x.size(2)).to(x.dtype)

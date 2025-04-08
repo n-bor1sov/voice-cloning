@@ -2,9 +2,9 @@ import os
 import sys
 if 'voice-cloning' in os.getcwd().split('\\')[-1]:
     try:
-        sys.path.append(os.getcwd()+'\\voice_cloning\\Grad-TTS')
-        sys.path.append(os.getcwd()+'\\voice_cloning\\Grad-TTS\\hifi-gan')
-        os.chdir(os.getcwd()+'\\voice_cloning\\Grad-TTS')
+        sys.path.append(os.getcwd()+'/voice_cloning/Grad-TTS')
+        sys.path.append(os.getcwd()+'/voice_cloning/Grad-TTS/hifi-gan')
+        os.chdir(os.getcwd()+'/voice_cloning/Grad-TTS')
     except:
         print('Problem with directory')
     print(os.getcwd())
@@ -76,7 +76,7 @@ if __name__ == "__main__":
     batch_collate = UnitMelSpeakerBatchCollate()
     loader = DataLoader(dataset=train_dataset, batch_size=batch_size,
                         collate_fn=batch_collate, drop_last=True,
-                        num_workers=8, shuffle=True)
+                        num_workers=1, shuffle=True)
     test_dataset = UnitMelSpeakerDataset(valid_filelist_path, cmudict_path, add_blank,
                                          n_fft, n_feats, sample_rate, hop_length,
                                          win_length, f_min, f_max)
@@ -134,11 +134,11 @@ if __name__ == "__main__":
                                  plot_tensor(attn.squeeze().cpu()),
                                  global_step=iteration, dataformats='HWC')
                 save_plot(y_enc.squeeze().cpu(),
-                          f'{log_dir}/generated_enc_{i}.png')
+                          f'{log_dir}/generated_enc_{i}_unit.png')
                 save_plot(y_dec.squeeze().cpu(),
-                          f'{log_dir}/generated_dec_{i}.png')
+                          f'{log_dir}/generated_dec_{i}_unit.png')
                 save_plot(attn.squeeze().cpu(),
-                          f'{log_dir}/alignment_{i}.png')
+                          f'{log_dir}/alignment_{i}_unit.png')
 
         model.train()
         dur_losses = []
@@ -184,11 +184,11 @@ if __name__ == "__main__":
         msg = 'Epoch %d: duration loss = %.3f ' % (epoch, np.mean(dur_losses))
         msg += '| prior loss = %.3f ' % np.mean(prior_losses)
         msg += '| diffusion loss = %.3f\n' % np.mean(diff_losses)
-        with open(f'{log_dir}/train.log', 'a') as f:
+        with open(f'{log_dir}/train_unit.log', 'a') as f:
             f.write(msg)
 
         if epoch % params.save_every > 0:
             continue
 
         ckpt = model.state_dict()
-        torch.save(ckpt, f=f"{log_dir}/grad_{epoch}.pt")
+        torch.save(ckpt, f=f"{log_dir}/grad_{epoch}_unit.pt")

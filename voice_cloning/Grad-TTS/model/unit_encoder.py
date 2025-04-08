@@ -42,8 +42,9 @@ class UnitEncoder(BaseModule):
         x_mask = sequence_mask(x_lengths, x.size(2)).to(x.dtype)
 
         x = self.prenet(x, x_mask)
-        if self.n_spks > 1:
+        if self.n_spks > 1:# or spk is not None:
             x = torch.cat([x, spk.unsqueeze(-1).repeat(1, 1, x.shape[-1])], dim=1)
+        
         x = self.encoder(x, x_mask)
         mu = self.proj_m(x) * x_mask
 

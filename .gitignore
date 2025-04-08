@@ -2,9 +2,8 @@
 # Byte-compiled files
 __pycache__/
 *.py[cod]
-voice_clonning
+
 .p
-v_cloning
 .DS_Store
 *.so
 # Distribution / packaging
@@ -28,7 +27,9 @@ build/
 *.log
 
 # Data files
-data/
+voice_cloning/speaker_encoder/data/train
+voice_cloning/speaker_encoder/data/test
+
 *.csv
 *.tsv
 *.json
@@ -37,6 +38,7 @@ text_encoder_dataset
 logs
 voice_cloning/Grad-TTS/checkpts/trained_decoder.pt
 voice_cloning/Grad-TTS/checkpts/hifigan.pt
+venv
 
 # Model files
 *.h5

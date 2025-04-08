@@ -1,0 +1,1 @@
+/repo/voice-cloning/text_encoder_dataset/LibriTTS/train-clean-100/19/198/19_198_000000_000002.wav|Hello, world! I like Ice cream with strawberry flavour|1

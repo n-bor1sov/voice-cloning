@@ -46,8 +46,15 @@ def load_checkpoint(logdir, model, num=None):
 
 
 def save_figure_to_numpy(fig):
-    data = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
-    data = data.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    fig.canvas.draw()
+    # Get the RGBA buffer from the canvas
+    data = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8)
+    # Get the (height, width) from the canvas (note: get_width_height() returns (width, height))
+    height, width = fig.canvas.get_width_height()[::-1]
+    # Reshape the buffer to (height, width, 4) since we have 4 channels (RGBA)
+    data = data.reshape((height, width, 4))
+    # Convert from RGBA to RGB by dropping the alpha channel
+    data = data[:, :, :3]
     return data
 
 

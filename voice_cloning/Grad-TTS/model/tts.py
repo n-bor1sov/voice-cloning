@@ -59,9 +59,9 @@ class GradTTS(BaseModule):
         """
         x, x_lengths = self.relocate_input([x, x_lengths])
 
-        if self.n_spks > 1:
+        if self.n_spks > 1 or spk is not None:
             # Get speaker embedding
-            spk = self.spk_emb(spk)
+            spk = self.spk_emb(spk.repeat(2,1))[0:1, :]
 
         # Get encoder_outputs `mu_x` and log-scaled token durations `logw`
         mu_x, logw, x_mask = self.encoder(x, x_lengths, spk)
@@ -107,9 +107,9 @@ class GradTTS(BaseModule):
         """
         x, x_lengths, y, y_lengths = self.relocate_input([x, x_lengths, y, y_lengths])
 
-        if self.n_spks > 1:
+        if self.n_spks > 1 or spk is not None:
             # Get speaker embedding
-            spk = self.spk_emb(spk)
+            spk = self.spk_emb(spk.repeat(2,1))[0:1, :]
         
         # Get encoder_outputs `mu_x` and log-scaled token durations `logw`
         mu_x, logw, x_mask = self.encoder(x, x_lengths, spk)
@@ -153,7 +153,7 @@ class GradTTS(BaseModule):
                 y_cut[i, :, :y_cut_length] = y_[:, cut_lower:cut_upper]
                 attn_cut[i, :, :y_cut_length] = attn[i, :, cut_lower:cut_upper]
             y_cut_lengths = torch.LongTensor(y_cut_lengths)
-            y_cut_mask = sequence_mask(y_cut_lengths).unsqueeze(1).to(y_mask)
+            y_cut_mask = sequence_mask(y_cut_lengths, out_size).unsqueeze(1).to(y_mask)
             
             attn = attn_cut
             y = y_cut

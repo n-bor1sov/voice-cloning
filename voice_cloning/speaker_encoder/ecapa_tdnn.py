@@ -291,6 +291,20 @@ def ECAPA_TDNN_SMALL(feat_dim, emb_dim=256, feat_type='fbank', sr=16000, feature
     return ECAPA_TDNN(feat_dim=feat_dim, channels=512, emb_dim=emb_dim,
                       feat_type=feat_type, sr=sr, feature_selection=feature_selection, update_extract=update_extract, config_path=config_path)
 
+
+
+class ECAPA_TDNN_SMALL_WTTH_PROJ(torch.nn.Module):
+    def __init__(self, feat_dim=256):
+        super().__init__()
+        self.spk = ECAPA_TDNN_SMALL(feat_dim=feat_dim)
+        self.proj = torch.nn.Linear(feat_dim, 64)
+    
+    def forward(self, x):
+        x = self.spk(x)
+        x = self.proj(x)
+        return x
+
+
 if __name__ == '__main__':
     x = torch.zeros(2, 32000)
     model = ECAPA_TDNN_SMALL(feat_dim=768, emb_dim=256, feat_type='hubert_base', feature_selection="hidden_states",

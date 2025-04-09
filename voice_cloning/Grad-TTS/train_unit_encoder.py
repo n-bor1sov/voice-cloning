@@ -17,7 +17,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 
 import params
-from model.tts import GradTTS
+from model.unit_tts import GradTTS
 from model.unit_encoder import UnitEncoder
 from data import UnitMelSpeakerDataset, UnitMelSpeakerBatchCollate
 from utils import plot_tensor, save_plot
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     batch_collate = UnitMelSpeakerBatchCollate()
     loader = DataLoader(dataset=train_dataset, batch_size=batch_size,
                         collate_fn=batch_collate, drop_last=True,
-                        num_workers=8, shuffle=True)
+                        num_workers=4, shuffle=True)
     test_dataset = UnitMelSpeakerDataset(valid_filelist_path, spk_embeds_path, hubert_embeds, cmudict_path, add_blank,
                                          n_fft, n_feats, sample_rate, hop_length,
                                          win_length, f_min, f_max)
@@ -95,7 +95,7 @@ if __name__ == "__main__":
     model.encoder = UnitEncoder(nsymbols, n_feats, n_enc_channels, filter_channels,
                     filter_channels_dp, n_heads, n_enc_layers, enc_kernel,
                     enc_dropout, window_size, n_contentvec=768).cuda()
-
+    model.encoder.load_state_dict(torch.load(params.pretrained_unit_encoder_path, map_location=lambda loc, storage: loc)['model'])
     for param in model.decoder.parameters():
         param.requires_grad = False
 
@@ -154,6 +154,7 @@ if __name__ == "__main__":
                 model.zero_grad()
                 x, x_lengths = batch['x'].cuda(), batch['x_lengths'].cuda()
                 y, y_lengths = batch['y'].cuda(), batch['y_lengths'].cuda()
+                print(x.shape, x_lengths.shape)
                 spk = batch['spk'].cuda()
                 dur_loss, prior_loss, diff_loss = model.compute_loss(x, x_lengths,
                                                                      y, y_lengths,
@@ -185,6 +186,7 @@ if __name__ == "__main__":
                 prior_losses.append(prior_loss.item())
                 diff_losses.append(diff_loss.item())
                 iteration += 1
+            print(f'dur loss mean: {sum(dur_losses) / len(dur_losses)}, prior loss mean {sum(prior_losses) / len(prior_losses)}, diff loss mean {sum(diff_losses) / len(diff_losses)}')
 
         msg = 'Epoch %d: duration loss = %.3f ' % (epoch, np.mean(dur_losses))
         msg += '| prior loss = %.3f ' % np.mean(prior_losses)
@@ -195,5 +197,5 @@ if __name__ == "__main__":
         if epoch % params.save_every > 0:
             continue
 
-        ckpt = model.state_dict()
-        torch.save(ckpt, f=f"{log_dir}/grad_{epoch}_unit.pt")
+        ckpt = model.encoder.state_dict()
+        torch.save(ckpt, f=f"{log_dir}/unit_encoder_{epoch}.pt")

@@ -85,8 +85,8 @@ if __name__ == "__main__":
                     n_heads, n_enc_layers, enc_kernel, enc_dropout, window_size,
                     n_feats, dec_dim, beta_min, beta_max, pe_scale).cuda()
     model.load_state_dict(torch.load(params.chkpt, map_location=lambda loc, storage: loc))
-    # for param in model.decoder.parameters():
-    #     param.requires_grad = False
+    for param in model.decoder.parameters():
+        param.requires_grad = False
     print('Number of encoder parameters = %.2fm' % (model.encoder.nparams/1e6))
     print('Number of decoder parameters = %.2fm' % (model.decoder.nparams/1e6))
 
@@ -173,6 +173,7 @@ if __name__ == "__main__":
                 prior_losses.append(prior_loss.item())
                 diff_losses.append(diff_loss.item())
                 iteration += 1
+            print(f'dur loss mean: {sum(dur_losses) / len(dur_losses)}, prior loss mean {sum(prior_losses) / len(prior_losses)}, diff loss mean {sum(diff_losses) / len(diff_losses)}')
 
         msg = 'Epoch %d: duration loss = %.3f ' % (epoch, np.mean(dur_losses))
         msg += '| prior loss = %.3f ' % np.mean(prior_losses)
@@ -184,4 +185,4 @@ if __name__ == "__main__":
             continue
 
         ckpt = model.state_dict()
-        torch.save(ckpt, f=f"{log_dir}/gradtts_{epoch}.pt")
+        torch.save(ckpt, f=f"{log_dir}/gradtts_{epoch + 23}.pt")

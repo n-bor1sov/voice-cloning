@@ -37,13 +37,15 @@ beta_max = 20.0
 pe_scale = 1000  # 1 for `grad-tts-old.pt` checkpoint
 
 # training parameters
-log_dir = 'logs/text_encoder'
+log_dir = 'logs/unit_encoder'
 test_size = 4
 n_epochs = 10000
 batch_size = 4
-learning_rate = 1e-4
+learning_rate = 2e-3
 seed = 37
 save_every = 1
 out_size = fix_len_compatibility(2*22050//256)
 
-chkpt = './checkpts/trained_decoder.pt'
+#chkpt = './checkpts/trained_decoder.pt'
+chkpt = '/repo/voice-cloning/voice_cloning/Grad-TTS/logs/text_encoder_2/gradtts_40.pt'
+pretrained_unit_encoder_path = '/repo/voice-cloning/voice_cloning/Grad-TTS/checkpts/unit_encoder.pt'

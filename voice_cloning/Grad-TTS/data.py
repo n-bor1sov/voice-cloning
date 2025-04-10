@@ -190,32 +190,38 @@ class UnitMelSpeakerDataset(TextMelSpeakerDataset):
         
     def get_triplet(self, line):
         filepath, _, speaker = line[0], line[1], line[2]
-        unit = self.hubert_embeds[filepath.replace('../../', './')]
+        unit, duration = self.hubert_embeds[filepath.replace('../../', './')]
         mel = self.get_mel(filepath)
         speaker = self.spk_embeds[filepath.replace('../../', './')]
-        return (unit, mel, speaker)
+        return (unit, duration, mel, speaker)
+    
+    def __getitem__(self, index):
+        unit, duration, mel, speaker = self.get_triplet(self.filelist[index])
+        item = {'y': mel, 'unit': unit, 'duration': duration, 'spk': speaker}
+        return item
 
 class UnitMelSpeakerBatchCollate(object):
     def __call__(self, batch):
         B = len(batch)
         y_max_length = max([item['y'].shape[-1] for item in batch])
         y_max_length = fix_len_compatibility(y_max_length)
-        x_max_length = max([item['x'].shape[-2] for item in batch])
-        n_contentvec = batch[0]['x'].shape[-1]
+        unit_max_length = max([item['unit'].shape[-1] for item in batch])
         n_feats = batch[0]['y'].shape[-2]
 
         y = torch.zeros((B, n_feats, y_max_length), dtype=torch.float32)
-        x = torch.zeros((B, x_max_length, n_contentvec), dtype=torch.float32)
-        y_lengths, x_lengths = [], []
+        unit = torch.zeros((B, unit_max_length), dtype=torch.long)
+        duration = torch.zeros((B, unit_max_length), dtype=torch.long)
+        y_lengths, unit_lengths = [], []
         spk = torch.zeros((B, batch[0]['spk'].shape[-1]), dtype=torch.float32)
-        
+
         for i, item in enumerate(batch):
-            y_, x_, spk_ = item['y'], item['x'], item['spk']
+            y_, unit_, duration_, spk_ = item['y'], item['unit'], item['duration'], item['spk']
             y_lengths.append(y_.shape[-1])
-            x_lengths.append(x_.shape[-1])
+            unit_lengths.append(unit.shape[-1])
             y[i, :, :y_.shape[-1]] = y_
-            x[i, :x_.shape[-1]] = x_
+            unit[i, :unit_.shape[-1]] = unit_
+            duration[i, :duration_.shape[-1]] = duration_
             spk[i] =  spk_
         y_lengths = torch.LongTensor(y_lengths)
-        x_lengths = torch.LongTensor(x_lengths)
-        return {'x': x, 'x_lengths': x_lengths, 'y': y, 'y_lengths': y_lengths, 'spk': spk}
+        unit_lengths = torch.LongTensor(unit_lengths)
+        return {'unit': unit, 'unit_lengths': unit_lengths, 'duration': duration, 'y': y, 'y_lengths': y_lengths, 'spk': spk}

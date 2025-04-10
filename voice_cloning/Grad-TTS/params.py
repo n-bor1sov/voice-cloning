@@ -6,7 +6,7 @@ train_filelist_path = 'resources/filelists/libri-tts/train.txt'
 valid_filelist_path = 'resources/filelists/libri-tts/valid.txt'
 test_filelist_path = 'resources/filelists/libri-tts/test.txt'
 spk_embeds_path = '../../checkpoints/precomputed_embeddings_libritts.pt'
-hubert_embeds_path = '../../checkpoints/precomputed_hubert_embeddings_libritts.pt'
+hubert_embeds_path = '../../checkpoints/precomputed_textless_embeddings_libritts.pt'
 cmudict_path = 'resources/cmu_dictionary'
 add_blank = True
 n_feats = 80
@@ -19,6 +19,7 @@ hop_length = 256
 win_length = 1024
 f_min = 0
 f_max = 8000
+n_units = 1000
 
 # encoder parameters
 n_enc_channels = 192
@@ -40,12 +41,11 @@ pe_scale = 1000  # 1 for `grad-tts-old.pt` checkpoint
 log_dir = 'logs/unit_encoder'
 test_size = 4
 n_epochs = 10000
-batch_size = 4
-learning_rate = 2e-3
+batch_size = 16
+learning_rate = 1e-4
 seed = 37
 save_every = 1
 out_size = fix_len_compatibility(2*22050//256)
 
-#chkpt = './checkpts/trained_decoder.pt'
-chkpt = '/repo/voice-cloning/voice_cloning/Grad-TTS/logs/text_encoder_2/gradtts_40.pt'
-pretrained_unit_encoder_path = '/repo/voice-cloning/voice_cloning/Grad-TTS/checkpts/unit_encoder.pt'
+chkpt = './checkpts/gradtts_44.pt'
+unit_encoder_path = './checkpts/grad_1_unit.pt'

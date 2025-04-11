@@ -98,7 +98,7 @@ optimizer = Adam(model.parameters(), lr=lr)
 
 train_csv = "./voice_cloning/speaker_encoder/data/train/test.csv"
 test_csv = "./voice_cloning/speaker_encoder/data/test/test.csv"
-resume_checkpoint = "checkpoints/best_model.pt" # or None if we want to train from scratch
+resume_checkpoint = "checkpoints/speaker_encoder/best_model.pt" # or None if we want to train from scratch
 
 start_epoch = 0
 best_accuracy = 0.0
@@ -144,7 +144,7 @@ for epoch in range(start_epoch, num_epochs):
     accuracy = evaluate(model, test_csv, device, folder_path=folder_path)
     print(f"Epoch [{epoch+1}/{num_epochs}], Evaluation Accuracy: {accuracy:.4f}")
     
-    checkpoint_dir = "checkpoints"
+    checkpoint_dir = "checkpoints/speaker_encoder"
     # Save checkpoint after each epoch
     os.makedirs(checkpoint_dir, exist_ok=True)
     

@@ -21,7 +21,7 @@ def main():
     print(f"Using device: {device}")
 
     # Load pre-trained ECAPA model
-    checkpoint_path = "voice_cloning/Grad-TTS/checkpts/speaker_encoder.pt"
+    checkpoint_path = "checkpoints/speaker_encoder/best_model.pt"
     if not os.path.isfile(checkpoint_path):
         raise FileNotFoundError(f"Pre-trained model not found at {checkpoint_path}")
 
@@ -55,7 +55,7 @@ def main():
             embeddings_dict[file_path] = embedding
 
     # Save embeddings
-    output_path = "checkpoints/precomputed_embeddings_libritts.pt"
+    output_path = "checkpoints/speaker_encoder/precomputed_embeddings_test.pt"
     torch.save(embeddings_dict, output_path)
     print(f"Saved {len(embeddings_dict)} embeddings to {output_path}")
 

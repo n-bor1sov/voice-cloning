@@ -11,6 +11,7 @@ __pycache__/
 env/
 vс/
 ENV/
+voice_cloning/Grad-TTS/LibriTTS
 env.bak/
 venv.bak/
 dist/

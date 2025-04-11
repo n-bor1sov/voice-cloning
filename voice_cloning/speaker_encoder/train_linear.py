@@ -48,7 +48,7 @@ def main():
     print(f"Using device: {device}")
 
     # Load pre-computed embeddings
-    embeddings_path = "checkpoints/precomputed_embeddings.pt"
+    embeddings_path = "checkpoints/speaker_encoder/precomputed_embeddings.pt"
     if not os.path.isfile(embeddings_path):
         raise FileNotFoundError(f"Pre-computed embeddings not found at {embeddings_path}. Run precompute_embeddings.py first.")
 
@@ -122,7 +122,7 @@ def main():
         print(f"Epoch [{epoch+1}/{num_epochs}], Evaluation Accuracy: {accuracy:.4f}")
 
         # Save checkpoint
-        checkpoint_dir = "checkpoints_finetuned"
+        checkpoint_dir = "checkpoints/speaker_encoder"
         os.makedirs(checkpoint_dir, exist_ok=True)
 
         checkpoint = {

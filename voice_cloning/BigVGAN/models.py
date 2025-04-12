@@ -11,7 +11,7 @@ import torch.nn as nn
 from torch.nn import Conv1d, ConvTranspose1d, Conv2d
 from torch.nn.utils import weight_norm, remove_weight_norm, spectral_norm
 
-import voice_cloning.BigVGAN.activations as activations
+import activations as activations
 from voice_cloning.BigVGAN.utils import init_weights, get_padding
 from voice_cloning.BigVGAN.alias_free_torch import *
 

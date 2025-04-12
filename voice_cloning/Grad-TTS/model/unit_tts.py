@@ -6,6 +6,7 @@ import torch
 from model import monotonic_align
 from model.base import BaseModule
 from model.text_encoder import TextEncoder
+from model.unit_encoder import UnitEncoder
 from model.diffusion import Diffusion
 from model.utils import sequence_mask, generate_path, duration_loss, fix_len_compatibility
 
@@ -34,7 +35,10 @@ class UnitGradTTS(BaseModule):
 
         if n_spks > 1:
             self.spk_emb = torch.nn.Embedding(n_spks, spk_emb_dim)
-        self.encoder = TextEncoder(n_vocab, n_feats, n_enc_channels, 
+        # self.encoder = TextEncoder(n_vocab, n_feats, n_enc_channels, 
+        #                            filter_channels, filter_channels_dp, n_heads, 
+        #                            n_enc_layers, enc_kernel, enc_dropout, window_size)
+        self.encoder = UnitEncoder(n_vocab, n_feats, n_enc_channels, 
                                    filter_channels, filter_channels_dp, n_heads, 
                                    n_enc_layers, enc_kernel, enc_dropout, window_size)
         self.decoder = Diffusion(n_feats, dec_dim, n_spks, spk_emb_dim, beta_min, beta_max, pe_scale)
@@ -88,7 +92,7 @@ class UnitGradTTS(BaseModule):
         decoder_outputs = decoder_outputs[:, :, :y_max_length]
         return encoder_outputs, decoder_outputs, attn[:, :, :y_max_length]
 
-    def compute_loss(self, x, x_lengths, y, y_lengths, spk=None, out_size=None):
+    def compute_loss(self, x, x_lengths, duration, y, y_lengths, spk=None, out_size=None):
         """
         Computes 3 losses:
             1. duration loss: loss between predicted token durations and those extracted by Monotinic Alignment Search (MAS).
@@ -105,12 +109,8 @@ class UnitGradTTS(BaseModule):
         """
         x, x_lengths, y, y_lengths = self.relocate_input([x, x_lengths, y, y_lengths])
 
-        if self.n_spks > 1:
-            # Get speaker embedding
-            spk = self.spk_emb(spk)
-        
         # Get encoder_outputs `mu_x` and log-scaled token durations `logw`
-        mu_x, logw, x_mask = self.encoder(x, x_lengths, spk)
+        mu_x, x, x_mask = self.encoder(x, x_lengths)
         y_max_length = y.shape[-1]
 
         y_mask = sequence_mask(y_lengths, y_max_length).unsqueeze(1).to(x_mask)
@@ -129,8 +129,8 @@ class UnitGradTTS(BaseModule):
             attn = attn.detach()
 
         # Compute loss between predicted log-scaled durations and those obtained from MAS
-        logw_ = torch.log(1e-8 + torch.sum(attn.unsqueeze(1), -1)) * x_mask
-        dur_loss = duration_loss(logw, logw_, x_lengths)
+        # logw_ = torch.log(1e-8 + torch.sum(attn.unsqueeze(1), -1)) * x_mask
+        dur_loss = torch.Tensor([0]).cuda()# duration_loss(logw, logw_, x_lengths)
 
         # Cut a small segment of mel-spectrogram in order to increase batch size
         if not isinstance(out_size, type(None)):
@@ -151,7 +151,7 @@ class UnitGradTTS(BaseModule):
                 y_cut[i, :, :y_cut_length] = y_[:, cut_lower:cut_upper]
                 attn_cut[i, :, :y_cut_length] = attn[i, :, cut_lower:cut_upper]
             y_cut_lengths = torch.LongTensor(y_cut_lengths)
-            y_cut_mask = sequence_mask(y_cut_lengths).unsqueeze(1).to(y_mask)
+            y_cut_mask = sequence_mask(y_cut_lengths, out_size).unsqueeze(1).to(y_mask)
             
             attn = attn_cut
             y = y_cut

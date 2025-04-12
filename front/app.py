@@ -69,14 +69,14 @@ voice_ref_choice = st.radio(
 if voice_ref_choice == "Upload MP3 File":
     uploaded_file_ref = st.file_uploader(
         "Upload an MP3 file for the voice reference:",
-        type=['mp3'],
+        type=['mp3', 'wav'],  # Include wav files
         key="ref_uploader"
     )
     if uploaded_file_ref is not None:
         voice_ref_data = uploaded_file_ref.getvalue()
-        voice_ref_type = "mp3"
-        st.audio(voice_ref_data, format='audio/mp3')
-        st.success("Voice reference MP3 uploaded successfully.")
+        voice_ref_type = uploaded_file_ref.type.split('/')[1]  # Determine type based on uploaded file
+        st.audio(voice_ref_data, format=uploaded_file_ref.type)  # Use the correct format
+        st.success(f"Voice reference {voice_ref_type.upper()} uploaded successfully.")
 
 elif voice_ref_choice == "Record Audio":
     voice_ref_data = st.audio_input(

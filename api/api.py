@@ -159,29 +159,32 @@ unit_gradtts = unit_tts.UnitGradTTS(
     decoder_config['beta_max'], 
     decoder_config['pe_scale']
 ).to(device)
+unit_gradtts.decoder = tts_model.decoder
 
 print('Initializing the UnitTTS encoder...')
-unit_gradtts.encoder = unit_encoder.UnitEncoder(
-    encoders_config['n_units'], 
-    mel_spectrogram_config['n_feats'], 
-    encoders_config['n_enc_channels'], 
-    encoders_config['filter_channels'],
-    encoders_config['filter_channels_dp'], 
-    encoders_config['n_heads'], 
-    encoders_config['n_enc_layers'], 
-    encoders_config['enc_kernel'],
-    encoders_config['enc_dropout'], 
-    encoders_config['window_size'], 
-    n_contentvec=0
-).to(device)
+# unit_gradtts.encoder = unit_encoder.UnitEncoder(
+#     encoders_config['n_units'], 
+#     mel_spectrogram_config['n_feats'], 
+#     encoders_config['n_enc_channels'], 
+#     encoders_config['filter_channels'],
+#     encoders_config['filter_channels_dp'], 
+#     encoders_config['n_heads'], 
+#     encoders_config['n_enc_layers'], 
+#     encoders_config['enc_kernel'],
+#     encoders_config['enc_dropout'], 
+#     encoders_config['window_size'], 
+#     n_contentvec=0
+# ).to(device)
+unit_gradtts.encoder.to(device)
 print('Loading the UnitTTS encoder...')
 unit_encoder_state_dict = torch.load('./checkpoints/unit_encoder_141.pt', map_location=device)
+# print(unit_encoder_state_dict.keys())
 unit_gradtts.encoder.load_state_dict(unit_encoder_state_dict)
 print('UnitTTS encoder is initialized and loaded')
 
 print('Load UnitTTS decoder from state dict...')
 # unit_decoder_state_dict = torch.load('../voice_cloning/Grad-TTS/logs/text_encoder/grad_2_unit.pt')
-unit_gradtts.decoder = tts_model.decoder
+
 unit_gradtts.encoder.requires_grad = False
 unit_gradtts.to(device);
 print('UnitTTS is initialized and loaded')
@@ -290,7 +293,7 @@ def exrtact_featurse_from_reference_voice(
     duration = duration.unsqueeze(0).to(device)
     y, y_lengths = mel.unsqueeze(0).to(device), torch.LongTensor([mel.shape[-1]]).to(device)
     spk = spk.to(device)
-    return mel, unit, duration, spk, orig_sr, y, y_lengths, unit_lengths
+    return unit, duration, spk, orig_sr, y, y_lengths, unit_lengths
 
 def finetune_decoder(
     unit,
@@ -355,7 +358,7 @@ async def clone_voice(
             # If voice ref type requires audio but none was provided
             raise HTTPException(status_code=400, detail="Error during saving")
         
-        mel, unit, duration, spk, orig_sr, y, y_lengths, unit_lengths = exrtact_featurse_from_reference_voice(saved_ref_path, device, ecapa, unit_extractor, mel_spectrogram_config)
+        unit, duration, spk, orig_sr, y, y_lengths, unit_lengths = exrtact_featurse_from_reference_voice(saved_ref_path, device, ecapa, unit_extractor, mel_spectrogram_config)
         
         optimizer = torch.optim.Adam(params=unit_gradtts.decoder.parameters(), lr=params.learning_rate)
         

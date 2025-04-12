@@ -4,7 +4,7 @@ from model.text_encoder import *
 class UnitEncoder(BaseModule):
     def __init__(self, n_vocab, n_feats, n_channels, filter_channels, 
                  filter_channels_dp, n_heads, n_layers, kernel_size, 
-                 p_dropout, window_size=None, n_contentvec=768, spk_emb_dim=64, n_spks=1):
+                 p_dropout, window_size=None, n_contentvec=0, spk_emb_dim=64, n_spks=1):
         super(UnitEncoder, self).__init__()
         self.n_vocab = n_vocab
         self.n_feats = n_feats
@@ -19,7 +19,10 @@ class UnitEncoder(BaseModule):
         self.spk_emb_dim = spk_emb_dim
         self.n_spks = n_spks
 
-        self.emb = torch.nn.Linear(n_contentvec, n_channels)
+        if n_contentvec > 0:
+            self.emb = torch.nn.Linear(n_contentvec, n_channels)
+        else:
+            self.emb = torch.nn.Embedding(n_vocab, n_channels)
         torch.nn.init.normal_(self.emb.weight, 0.0, n_channels**-0.5)
 
         self.prenet = ConvReluNorm(n_channels, n_channels, n_channels, 
@@ -29,22 +32,15 @@ class UnitEncoder(BaseModule):
                                kernel_size, p_dropout, window_size=window_size)
 
         self.proj_m = torch.nn.Conv1d(n_channels + (spk_emb_dim if n_spks > 1 else 0), n_feats, 1)
-        self.proj_w = DurationPredictor(n_channels + (spk_emb_dim if n_spks > 1 else 0), filter_channels_dp, 
-                                        kernel_size, p_dropout)
 
-    def forward(self, x, x_lengths, spk=None):
+    def forward(self, x, x_lengths):
         x = self.emb(x) * math.sqrt(self.n_channels)
         x = torch.transpose(x, 1, -1)
-        x_mask = sequence_mask(x_lengths, x.size(2)).to(x.dtype)
+        x_mask = torch.unsqueeze(sequence_mask(x_lengths, x.size(2)), 1).to(x.dtype)
 
         x = self.prenet(x, x_mask)
-        if self.n_spks > 1:# or spk is not None:
-            x = torch.cat([x, spk.unsqueeze(-1).repeat(1, 1, x.shape[-1])], dim=1)
-        
         x = self.encoder(x, x_mask)
-        mu = self.proj_m(x) * x_mask
+        mu_x = self.proj_m(x) * x_mask
 
-        x_dp = torch.detach(x)
-        logw = self.proj_w(x_dp, x_mask)
+        return mu_x, x, x_mask
 
-        return mu, logw, x_mask

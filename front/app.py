@@ -3,8 +3,7 @@ import requests
 import io # Needed for sending bytes as files
 
 # --- Configuration ---
-# !!! IMPORTANT: Replace this with the actual URL of your backend API !!!
-BACKEND_CLONING_URL = "http://localhost:8000/clone_voice" # Example URL
+BACKEND_CLONING_URL = "http://localhost:8000/clone_voice"
 
 st.set_page_config(layout="wide")
 
@@ -18,43 +17,16 @@ voice_ref_type = None
 
 # --- Section 1: Input Source ---
 st.subheader("1. Input Source (Content to Generate)")
-input1_choice = st.radio(
-    "Choose the type of input content:",
-    ("Text", "Upload MP3 File", "Record Audio"),
-    key="input1_choice_radio"
+
+input1_data = st.text_area(
+    "Enter the text you want the cloned voice to speak:",
+    height=150,
+    placeholder="Type your text here...",
+    key="input1_text"
 )
-
-if input1_choice == "Text":
-    input1_data = st.text_area(
-        "Enter the text you want the cloned voice to speak:",
-        height=150,
-        placeholder="Type your text here...",
-        key="input1_text"
-    )
-    input1_type = "text"
-    if input1_data:
-        st.success("Text input provided.")
-
-elif input1_choice == "Upload MP3 File":
-    uploaded_file_input1 = st.file_uploader(
-        "Upload an MP3 file as input content:",
-        type=['mp3'],
-        key="input1_uploader"
-    )
-    if uploaded_file_input1 is not None:
-        input1_data = uploaded_file_input1.getvalue()
-        input1_type = "mp3"
-        st.audio(input1_data, format='audio/mp3')
-        st.success("Input MP3 uploaded successfully.")
-
-elif input1_choice == "Record Audio":
-    input1_data = st.audio_input(
-        "Record the input content:",
-        key="input1_recorder"
-    )
-    if input1_data is not None:
-        input1_type = "audio_bytes"
-        st.success("Input audio recorded successfully.")
+input1_type = "text"
+if input1_data:
+    st.success("Text input provided.")
 
 st.divider()
 
@@ -93,11 +65,7 @@ st.divider()
 st.subheader("3. Start Cloning")
 
 # Check if both inputs are provided
-input1_provided = False
-if input1_type == "text":
-    input1_provided = input1_data is not None and input1_data.strip() != ""
-else:
-    input1_provided = input1_data is not None
+input1_provided = input1_data is not None and input1_data.strip() != ""
 
 voice_ref_provided = voice_ref_data is not None
 
@@ -113,16 +81,11 @@ if input1_provided and voice_ref_provided:
                 }
 
                 # Add Input 1 data
-                if input1_type == 'text':
-                    data_payload['input1_text'] = input1_data
-                elif input1_type == 'mp3':
-                    files_payload['input1_audio'] = ('input1.mp3', input1_data, 'audio/mpeg')
-                elif input1_type == 'audio_bytes': # Assuming recorder gives wav
-                    files_payload['input1_audio'] = ('input1.wav', input1_data, 'audio/wav')
+                data_payload['input1_text'] = input1_data
 
                 # Add Voice Reference data
                 try:
-                    if voice_ref_type == 'mp3':
+                    if voice_ref_type == 'mpeg':
                         files_payload['voice_ref_audio'] = ('voice_ref.mp3', voice_ref_data, 'audio/mpeg')
                     elif voice_ref_type == 'audio_bytes': # Assuming recorder gives wav
                         files_payload['voice_ref_audio'] = ('voice_ref.mp3', voice_ref_data, 'audio/wav')

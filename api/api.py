@@ -54,7 +54,8 @@ encoders_config = {
     'enc_dropout': params.enc_dropout,
     'n_heads': params.n_heads,
     'window_size': params.window_size,
-    'n_units': params.n_units
+    'n_units': params.n_units,
+    'add_blank': params.add_blank
 }
 
 mel_spectrogram_config = {
@@ -323,8 +324,8 @@ def finetune_decoder(
 
 # Create a directory to store uploaded audio files
 AUDIO_DIR = "audio_files"
-CMU_DICT_PATH = "../voice_cloning/Grad-TTS/resources/cmu_dictionary"
-FINETUNE_ITERATIONS = 500
+CMU_DICT_PATH = "./voice_cloning/Grad-TTS/resources/cmu_dictionary"
+FINETUNE_ITERATIONS = 1000
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
 app = FastAPI()
@@ -366,7 +367,7 @@ async def clone_voice(
         
         generated_audio = tts_pipeline(input1_text, CMU_DICT_PATH, encoders_config, spk)
         
-        torchaudio.save(f"output_{voice_ref_audio.filename}.wav", generated_audio, orig_sr)
+        torchaudio.save(f"output_{voice_ref_audio.filename}.wav", generated_audio.unsqueeze(0), orig_sr)
         output_audio_path = f"output_{voice_ref_audio.filename}.wav"
         # ---------------------------------------------------
 
